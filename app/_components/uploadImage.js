@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useUserinfo } from "../state/context";
 
@@ -11,46 +11,93 @@ export default function UploadImage() {
 
   // to be inserted in zustand store later
   const { userInfo, setUserInfo } = useUserinfo();
+
+  // for previewing the image before uploading
   const [imageUrl, setImageUrl] = useState(DEFAULT_IMAGE_URL);
+
+  // actual file name of the image to be stored in zustand
+  const [imageFileName, setImageFileName] = useState(DEFAULT_IMAGE_URL);
+
   const [username, setUsername] = useState("");
 
   const router = useRouter();
+
+  // to store the compressed image blob before uploading to backend
+  const compressedImageRef = useRef(null);
 
   const handleProceed = () => {
     if (!username || !username.trim()) {
       alert("Please enter a username before continuing.");
       return;
     }
-    setUserInfo({ username, imageUrl });
+
+    const blob = compressedImageRef.current;
+
+    const formData = new FormData();
+    if (blob) {
+      formData.append("username", username);
+      formData.append("file", blob, imageFileName || "image.jpg");
+      fetch("http://100.111.219.117:3001/upload", {
+        method: "POST",
+        body: formData,
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          console.log("Upload successful:", data);
+          setUserInfo({
+            username: username,
+            imageUrl: data.url,
+          });
+        })
+        .catch((error) => {
+          console.error("Error uploading image:", error);
+        });
+    } else {
+      setUserInfo({
+        username,
+        imageUrl: imageFileName,
+      });
+    }
+
     router.push(`/chatnow`);
   };
 
   const compressImage = (file, callback) => {
-    setImageUrl(null);
-
     const reader = new FileReader();
-    reader.readAsImage = true;
+
     reader.onload = (event) => {
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx.drawImage(img, 0, 0);
+
+        // Resize if needed
+        const MAX_WIDTH = 1920;
+        const scale = Math.min(1, MAX_WIDTH / img.width);
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+
+        // IMPORTANT: remove transparency for JPEG
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
         let quality = 0.9;
-        let compressedData;
+        const MIN_QUALITY = 0.4;
 
         const tryCompress = () => {
           canvas.toBlob(
             (blob) => {
-              if (blob.size > 100 * 1024 && quality > 0.01) {
+              if (!blob) return;
+
+              if (blob.size > 100 * 1024 && quality > MIN_QUALITY) {
                 quality -= 0.1;
                 tryCompress();
               } else {
-                const url = URL.createObjectURL(blob);
-                callback(url);
+                callback({
+                  blob,
+                  url: URL.createObjectURL(blob),
+                });
               }
             },
             "image/jpeg",
@@ -60,8 +107,10 @@ export default function UploadImage() {
 
         tryCompress();
       };
+
       img.src = event.target.result;
     };
+
     reader.readAsDataURL(file);
   };
 
@@ -75,7 +124,10 @@ export default function UploadImage() {
         return;
       }
       compressImage(file, (compressedUrl) => {
-        setImageUrl(compressedUrl);
+        const { url, blob } = compressedUrl;
+        setImageUrl(url);
+        setImageFileName(file.name);
+        compressedImageRef.current = blob;
       });
     }
   };
@@ -84,6 +136,7 @@ export default function UploadImage() {
     setIsChecked(!isChecked);
 
     if (isChecked) {
+      setImageFileName(DEFAULT_IMAGE_URL);
       setImageUrl(DEFAULT_IMAGE_URL);
     }
   };
