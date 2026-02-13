@@ -25,4 +25,25 @@ const useUserinfo = create(
   ),
 );
 
-export { useChatStore, useUserinfo };
+//message format
+// {
+//   message
+//   from
+// }
+const chatMessagesStore = create(
+  devtools(
+    (set) => ({
+      messages: [
+        {
+          message: "Hello, how can I help you?",
+          from: "bot",
+        },
+      ],
+      addMessage: (message) =>
+        set((state) => ({ messages: [...state.messages, message] })),
+    }),
+    { name: "ChatMessagesStore" },
+  ),
+);
+
+export { useChatStore, useUserinfo, chatMessagesStore };
