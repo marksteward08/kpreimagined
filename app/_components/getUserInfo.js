@@ -1,13 +1,20 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useUserinfo } from "../state/context";
+import { initNSFWModel, checkNSFW } from "@/service/nsfwChecker";
+import Loading from "../loading";
 
 // DEFAULTS
-const DEFAULT_IMAGE_URL = "https://picsum.photos/400/400";
+// const DEFAULT_IMAGE_URL = "https://picsum.photos/200/200";
+const DEFAULT_IMAGE_URL = "/default.jpg";
 
 export default function UploadImage() {
   const [isChecked, setIsChecked] = useState(false);
+
+  const [loading, setLoading] = useState(false);
+
+  const [isNSFWpassed, setIsNSFWpassed] = useState(false);
 
   // to be inserted in zustand store later
   const { userInfo, setUserInfo } = useUserinfo();
@@ -24,6 +31,23 @@ export default function UploadImage() {
 
   // to store the compressed image blob before uploading to backend
   const compressedImageRef = useRef(null);
+
+  const imageRef = useRef(null);
+  const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        await initNSFWModel(); // Uses local model by default
+      } catch (err) {
+        console.error("Failed loading model", err);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleProceed = () => {
     if (!username || !username.trim()) {
@@ -115,6 +139,7 @@ export default function UploadImage() {
   };
 
   const handleImageUpload = (e) => {
+    setLoading(true);
     const file = e.target.files[0];
     if (file) {
       // Validate that the file is an image
@@ -143,6 +168,11 @@ export default function UploadImage() {
 
   return (
     <>
+      {loading && (
+        <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50">
+          <Loading />
+        </div>
+      )}
       <div className="flex flex-col gap-5 md:gap-8 items-center">
         <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-center">
           {isChecked ? (
@@ -165,6 +195,30 @@ export default function UploadImage() {
           <img
             src={imageUrl}
             className="size-40 md:size-60 bg-black rounded-full border-2 object-cover object-center"
+            crossOrigin="anonymous"
+            ref={imageRef}
+            onLoad={() => {
+              // if imageRef is not the default image, check for NSFW content
+              if (imageUrl !== DEFAULT_IMAGE_URL) {
+                checkNSFW(imageRef.current, (result) => {
+                  if (result.isPorn) {
+                    alert(
+                      "The uploaded image was detected as inappropriate. Please choose a different image.",
+                    );
+                    setImageUrl(DEFAULT_IMAGE_URL);
+                    setImageFileName(DEFAULT_IMAGE_URL);
+                    compressedImageRef.current = null;
+                    // reset the input file value to allow re-uploading the same image if user wants to change it
+                    fileInputRef.current.value = "";
+                    setIsNSFWpassed(false);
+                  } else {
+                    setIsNSFWpassed(true);
+                  }
+                });
+              }
+              // Always stop loading regardless of NSFW check
+              setLoading(false);
+            }}
           ></img>
         )}
         <input
@@ -180,6 +234,7 @@ export default function UploadImage() {
             <input
               type="file"
               accept="image/*"
+              ref={fileInputRef}
               onChange={handleImageUpload}
               className="file-input file-input-neutral "
             />
@@ -200,21 +255,22 @@ export default function UploadImage() {
           <p className="italic text-[15px]">I dont want to upload my Image</p>
         </div>
 
-        {isChecked ? (
+        {isChecked && (
           <button
             onClick={handleProceed}
             className="btn not-hover:btn-neutral hover:btn-soft rounded-xl"
           >
             Yes, I am sure.
           </button>
-        ) : imageUrl !== DEFAULT_IMAGE_URL && imageUrl !== null ? (
+        )}
+        {!isChecked && isNSFWpassed && (
           <button
             onClick={handleProceed}
             className="btn not-hover:btn-neutral hover:btn-soft rounded-xl animate-jump-in"
           >
             LOOKS GOOD ✨
           </button>
-        ) : null}
+        )}
       </div>
     </>
   );

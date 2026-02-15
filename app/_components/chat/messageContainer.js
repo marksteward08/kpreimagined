@@ -15,11 +15,11 @@ export default function MessageContainer({ setMessages }) {
 
   return (
     <>
-      <div className="flex gap-2 bg-gray-400 p-5">
+      <div className="grid grid-cols-6 gap-2 bg-gray-400 p-5">
         <input
           type="text"
           placeholder="Type your message here"
-          className="input flex-1"
+          className="input col-span-5 sm:col-span-4 w-full"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={(e) => {
@@ -30,6 +30,12 @@ export default function MessageContainer({ setMessages }) {
         />
         <button className="btn btn-neutral" onClick={handleSend}>
           Send
+        </button>
+        <button
+          className="btn btn-warning col-span-full sm:col-span-1"
+          onClick={handleSend}
+        >
+          End
         </button>
       </div>
     </>
