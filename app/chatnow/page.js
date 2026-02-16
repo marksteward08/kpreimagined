@@ -1,44 +1,83 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import ChatContainer from "../_components/chat/chatContainer";
 import LookingForChatMate from "../_components/lookingForChatMate";
 import { useRoomId } from "../state/context";
 import { io } from "socket.io-client";
+import localforage from "localforage";
 
 export default function Page() {
   const { roomId, setRoomId } = useRoomId();
+  const socketRef = useRef(null);
 
   useEffect(() => {
-    const socket = io("http://100.111.219.117:3001", { autoConnect: true });
+    const setup = async () => {
+      // 1. Load roomId FIRST
+      const storedRoomId = await localforage.getItem("roomId");
 
-    socket.on("connect", () => {
-      console.log("Socket connected:", socket.id);
-    });
+      let isRoomValid = false;
 
-    socket.on("paired", (data) => {
-      // add the data.roomId to local storage
-      localStorage.setItem("roomId", data.roomId);
-      // set the roomId in context
-      setRoomId(data.roomId);
-      console.log("Paired with:", data);
-    });
+      // 2. Check if valid
+      if (storedRoomId) {
+        try {
+          const response = await fetch(
+            `http://100.111.219.117:3001/check-room/${storedRoomId}`,
+          );
+          const data = await response.json();
 
-    socket.on("disconnect", (reason) => {
-      console.log("Socket disconnected:", reason);
-    });
+          if (data.isActive) {
+            isRoomValid = true;
+            setRoomId(storedRoomId);
+          } else {
+            await localforage.removeItem("roomId");
+          }
+        } catch (error) {
+          console.error("Error checking room:", error);
+        }
+      }
 
-    // add any additional listeners here
+      // 3. Create socket AFTER checking
+      const socket = io("http://100.111.219.117:3001", {
+        autoConnect: true,
+        auth: {
+          roomId: isRoomValid ? storedRoomId : null,
+          reconnect: isRoomValid ? true : false,
+        },
+      });
+
+      socketRef.current = socket;
+
+      // 4. Listeners
+      socket.on("connect", () => {
+        console.log("Socket connected:", socket.id);
+      });
+
+      socket.on("paired", async (data) => {
+        await localforage.setItem("roomId", data.roomId);
+        sessionStorage.setItem("roomId", data.roomId);
+        setRoomId(data.roomId);
+
+        console.log("Paired with:", data);
+      });
+
+      socket.on("disconnect", (reason) => {
+        console.log("Socket disconnected:", reason);
+      });
+    };
+
+    setup();
+
+    // 5. Cleanup
     return () => {
-      socket.removeAllListeners();
-      socket.disconnect();
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
     };
   }, [setRoomId]);
 
   return (
-    <>
-      <div className="max-w-6xl mx-auto">
-        {roomId ? <ChatContainer /> : <LookingForChatMate />}
-      </div>
-    </>
+    <div className="max-w-6xl mx-auto">
+      {roomId ? <ChatContainer /> : <LookingForChatMate />}
+    </div>
   );
 }
