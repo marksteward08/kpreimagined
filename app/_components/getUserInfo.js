@@ -5,7 +5,7 @@ import { useUserinfo } from "../state/context";
 import { initNSFWModel, checkNSFW } from "@/service/nsfwChecker";
 import Loading from "../loading";
 import { DEFAULT_IMAGE_URL } from "../constants";
-
+import { SOCKET_URL } from "../constants";
 // DEFAULTS
 // const DEFAULT_IMAGE_URL = "https://picsum.photos/200/200";
 
@@ -61,7 +61,7 @@ export default function UploadImage() {
     if (blob) {
       formData.append("username", username);
       formData.append("file", blob, imageFileName || "image.jpg");
-      fetch("http://100.111.219.117:3001/upload", {
+      fetch(`${SOCKET_URL}/upload`, {
         method: "POST",
         body: formData,
       })

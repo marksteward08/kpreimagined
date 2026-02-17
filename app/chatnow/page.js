@@ -5,6 +5,7 @@ import LookingForChatMate from "../_components/lookingForChatMate";
 import { useRoomId } from "../state/context";
 import { io } from "socket.io-client";
 import localforage from "localforage";
+import { SOCKET_URL } from "../constants";
 
 export default function Page() {
   const { roomId, setRoomId } = useRoomId();
@@ -21,7 +22,7 @@ export default function Page() {
       if (storedRoomId) {
         try {
           const response = await fetch(
-            `http://100.111.219.117:3001/check-room/${storedRoomId}`,
+            `${SOCKET_URL}/check-room/${storedRoomId}`,
           );
           const data = await response.json();
 
@@ -37,7 +38,7 @@ export default function Page() {
       }
 
       // 3. Create socket AFTER checking
-      const socket = io("http://100.111.219.117:3001", {
+      const socket = io(SOCKET_URL, {
         autoConnect: true,
         auth: {
           roomId: isRoomValid ? storedRoomId : null,
