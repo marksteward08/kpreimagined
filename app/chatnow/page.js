@@ -18,6 +18,9 @@ export default function Page() {
 
       let isRoomValid = false;
 
+      // alert localforage roomId for debugging
+      console.log("Loaded roomId from localforage:", storedRoomId);
+
       // 2. Check if valid
       if (storedRoomId) {
         try {
