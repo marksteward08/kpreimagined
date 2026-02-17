@@ -1,12 +1,28 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  /* config options here */
   reactCompiler: true,
   reactStrictMode: false,
-  allowedDevOrigins: [
-    "http://localhost:3000",
-    "https://0b96-2400-d1e0-8000-3704-7975-dec3-6084-f0e1.ngrok-free.app",
-  ],
+  // allow all origins
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          { key: "Access-Control-Allow-Credentials", value: "true" },
+          { key: "Access-Control-Allow-Origin", value: "*" },
+          {
+            key: "Access-Control-Allow-Methods",
+            value: "GET,OPTIONS,POST,PUT,PATCH,DELETE",
+          },
+          {
+            key: "Access-Control-Allow-Headers",
+            value:
+              "X-CSRF-Token, X-Requested-With, Accept, Accept-Encoding, Content-Type, Authorization",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;
