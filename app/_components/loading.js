@@ -4,24 +4,24 @@ import { FidgetSpinner } from "react-loader-spinner";
 import { io } from "socket.io-client";
 
 export default function Loading() {
-  useEffect(() => {
-    const socket = io("http://localhost:3001", { autoConnect: true });
+  // useEffect(() => {
+  //   const socket = io("http://localhost:3001", { autoConnect: true });
 
-    socket.on("connect", () => {
-      console.log("Socket connected:", socket.id);
-    });
+  //   socket.on("connect", () => {
+  //     console.log("Socket connected:", socket.id);
+  //   });
 
-    socket.on("disconnect", (reason) => {
-      console.log("Socket disconnected:", reason);
-    });
+  //   socket.on("disconnect", (reason) => {
+  //     console.log("Socket disconnected:", reason);
+  //   });
 
-    // add any additional listeners here
+  //   // add any additional listeners here
 
-    return () => {
-      socket.removeAllListeners();
-      socket.disconnect();
-    };
-  }, []);
+  //   return () => {
+  //     socket.removeAllListeners();
+  //     socket.disconnect();
+  //   };
+  // }, []);
 
   return (
     <>
